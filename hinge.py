@@ -8,6 +8,7 @@ from PIL import Image
 import pytesseract
 
 
+
 # Setup
 opts = UiAutomator2Options()
 opts.platform_name = "Android"
