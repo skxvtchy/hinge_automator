@@ -155,5 +155,6 @@ print(text)
 print(one_liner)
 
 click_random_point(87, 172, 2021, 2113)
+click_random_point(470, 920, 2090, 2155)
 
 driver.quit()
