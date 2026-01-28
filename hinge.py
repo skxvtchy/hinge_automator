@@ -15,7 +15,6 @@ from openai import OpenAI
 
 load_dotenv()
 
-
 def generate_chill_one_liner(profile_text: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -68,7 +67,11 @@ def type_text(text: str) -> None:
 
 
 
-def swipe_profile(screen_width: int) -> None:
+def swipe_profile(
+    screen_width: int,
+    retries: int = 2,
+    delay_seconds: float = 0.6,
+) -> None:
     # Then perform the swipe
     start_x = int(screen_width * random.uniform(0.45, 0.55))
     start_y = 2021
@@ -84,18 +87,25 @@ def swipe_profile(screen_width: int) -> None:
 
     # Execute swipe in small steps
     for k in range(len(points) - 1):
-        driver.execute_script(
-            "mobile: swipeGesture",
-            {
-                "direction": "up",
-                "percent": 0.9,
-                "left": min(points[k][0], points[k+1][0]),
-                "top": min(points[k][1], points[k+1][1]),
-                "width": abs(points[k+1][0] - points[k][0]) + 1,
-                "height": abs(points[k+1][1] - points[k][1]) + 1,
-                "speed": random.randint(800, 1200)
-            }
-        )
+        for attempt in range(1, retries + 1):
+            try:
+                driver.execute_script(
+                    "mobile: swipeGesture",
+                    {
+                        "direction": "up",
+                        "percent": 0.9,
+                        "left": min(points[k][0], points[k+1][0]),
+                        "top": min(points[k][1], points[k+1][1]),
+                        "width": abs(points[k+1][0] - points[k][0]) + 1,
+                        "height": abs(points[k+1][1] - points[k][1]) + 1,
+                        "speed": random.randint(800, 1200)
+                    }
+                )
+                break
+            except WebDriverException:
+                if attempt == retries:
+                    raise
+                time.sleep(delay_seconds)
         time.sleep(random.uniform(0.05, 0.15))
 
 
@@ -109,52 +119,62 @@ def safe_screenshot(path: str, retries: int = 3, delay_seconds: float = 0.6) -> 
                 raise
             time.sleep(delay_seconds)
 
-# Setup
-opts = UiAutomator2Options()
-opts.platform_name = "Android"
-opts.device_name = "Android Emulator"
-opts.automation_name = "UiAutomator2"
-opts.app_package = "co.hinge.app"
-opts.app_activity = "co.hinge.app.ui.AppActivity"
-opts.no_reset = True
+def run_session() -> None:
+    # Setup
+    opts = UiAutomator2Options()
+    opts.platform_name = "Android"
+    opts.device_name = "Android Emulator"
+    opts.automation_name = "UiAutomator2"
+    opts.app_package = "co.hinge.app"
+    opts.app_activity = "co.hinge.app.ui.AppActivity"
+    opts.no_reset = True
 
-driver = webdriver.Remote("http://127.0.0.1:4723", options=opts)
-driver.implicitly_wait(10)
+    global driver
+    driver = webdriver.Remote("http://127.0.0.1:4723", options=opts)
+    driver.implicitly_wait(10)
 
-# Tap example
+    try:
+        # Tap example
+        safe_screenshot("people/screenshot.png")
 
-safe_screenshot("people/screenshot.png")
+        text = ""
 
-text = ''
+        for i in range(6):  # 6 swipes
+            # Take screenshot first
+            safe_screenshot(f"people/screenshot_{i}.png")
+            img = Image.open(f"people/screenshot_{i}.png")
 
-for i in range(6):  # 6 swipes
-    # Take screenshot first
-    safe_screenshot(f"people/screenshot_{i}.png")
-    img = Image.open(f"people/screenshot_{i}.png")
+            # Read text and filter out system/debug lines
+            lines = pytesseract.image_to_string(img).splitlines()
+            filtered_lines = [
+                line for line in lines
+                if not any(keyword in line for keyword in ["P:0/1", "dX:", "GY2=", "Xv:", "Yv:", "Prono", "Size:"])
+            ]
+            screenshot_text = " ".join(filtered_lines).replace("©", "").strip()
+            text += screenshot_text + " "
 
-    # Read text and filter out system/debug lines
-    lines = pytesseract.image_to_string(img).splitlines()
-    filtered_lines = [
-        line for line in lines
-        if not any(keyword in line for keyword in ["P:0/1", "dX:", "GY2=", "Xv:", "Yv:", "Prono", "Size:"])
-    ]
-    screenshot_text = " ".join(filtered_lines).replace("©", "").strip()
-    text += screenshot_text + " "
+            swipe_profile(driver.get_window_size()["width"])
 
-    swipe_profile(driver.get_window_size()["width"])
+        one_liner = generate_chill_one_liner(text)
 
-one_liner = generate_chill_one_liner(text)
+        click_random_point(916, 960, 1800, 1900)
+        swipe_profile(driver.get_window_size()["width"])
+        click_random_point(150, 900, 1900, 2000)
 
-click_random_point(916, 960, 1800, 1900)
-swipe_profile(driver.get_window_size()["width"])
-click_random_point(150, 900, 1900, 2000)
+        type_text(one_liner.replace(" ", "%s").encode("ascii", "ignore").decode())
+        # print(text)
+        # print(one_liner)
+
+        click_random_point(87, 172, 2021, 2113)
+        time.sleep(random.uniform(0.05, 0.15))
+
+        click_random_point(470, 920, 2090, 2155)
+    finally:
+        driver.quit()
 
 
-type_text(type_text(one_liner.replace(" ", "%s").encode("ascii", "ignore").decode()))
-print(text)
-print(one_liner)
-
-click_random_point(87, 172, 2021, 2113)
-click_random_point(470, 920, 2090, 2155)
-
-driver.quit()
+for i in range(10):
+    try:
+        run_session()
+    except WebDriverException:
+        time.sleep(1.0)
