@@ -19,11 +19,19 @@ from hinge_utils import (
 
 def run_session(driver) -> None:
     # Tap example
+<<<<<<< HEAD
     # safe_screenshot(driver, "people/screenshot.png")
 
     text = ""
 
     for i in range(5):  # 5 swipes
+=======
+    safe_screenshot(driver, "people/screenshot.png")
+
+    text = ""
+
+    for i in range(1):  # 6 swipes
+>>>>>>> origin/main
         # Take screenshot first
         safe_screenshot(driver, f"people/screenshot_{i}.png")
         img = Image.open(f"people/screenshot_{i}.png")
