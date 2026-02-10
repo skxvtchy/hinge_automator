@@ -2,6 +2,7 @@ appium-python-client>=5.2.5
 selenium>=4.14.0,<4.37.0
 pytest>=7.4.0,<8.0
 pytesseract
+urllib3<2
 pillow
 openai
 python-dotenv

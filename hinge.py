@@ -19,11 +19,11 @@ from hinge_utils import (
 
 def run_session(driver) -> None:
     # Tap example
-    safe_screenshot(driver, "people/screenshot.png")
+    # safe_screenshot(driver, "people/screenshot.png")
 
     text = ""
 
-    for i in range(1):  # 6 swipes
+    for i in range(6):  # 5 swipes
         # Take screenshot first
         safe_screenshot(driver, f"people/screenshot_{i}.png")
         img = Image.open(f"people/screenshot_{i}.png")
@@ -44,16 +44,21 @@ def run_session(driver) -> None:
     print(one_liner)
 
     click_random_point(driver, 916, 960, 1800, 1900)
+    time.sleep(1)
     swipe_profile(driver, driver.get_window_size()["width"])
-    click_random_point(driver, 150, 900, 1900, 2000)
+    time.sleep(1)
 
-    type_text(driver, one_liner[1].replace(" ", "%s").encode("ascii", "ignore").decode())
-    append_one_liners_to_csv(one_liner[0], one_liner[1])
+    click_random_point(driver, 150, 450, 1900, 1950)
+    time.sleep(1)
+
+    type_text(driver, one_liner[1]) 
+    click_random_point(driver, 201, 241, 1842, 1843)
+   
+    # append_one_liners_to_csv(one_liner[0], one_liner[1])
 
     # click_random_point(driver, 87, 172, 2021, 2113)
-    # time.sleep(random.uniform(0.01, 0.03))
-
-    # click_random_point(driver, 470, 920, 2090, 2155)
+    time.sleep(1)
+    click_random_point(driver, 470, 900, 2095, 2155)
 
 
 # Setup driver once and reuse across all sessions
@@ -69,7 +74,7 @@ driver = webdriver.Remote("http://127.0.0.1:4723", options=opts)
 driver.implicitly_wait(5)
 
 try:
-    for i in range(1):
+    for i in range(8): # change this to make it run longer
         try:
             run_session(driver)
         except WebDriverException:

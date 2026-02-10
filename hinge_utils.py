@@ -84,59 +84,63 @@ def click_random_point(driver, min_x: int, max_x: int, min_y: int, max_y: int) -
     time.sleep(0.1)
 
 
+
 def type_text(driver, text: str) -> None:
-    safe = text.replace(" ", "%s")
-    driver.execute_script(
-        "mobile: shell",
-        {
-            "command": "input",
-            "args": ["text", safe]
-        }
-    )
+    try:
+        # 1. Set the device clipboard text
+        # This uses Appium's internal helper app to store the string
+        driver.set_clipboard_text(text)
+        
+        # 2. Wait for the UI/Keyboard to be ready after your click
+        # Hinge animations need a moment to stabilize
+        time.sleep(1.0)
+        
+        # 3. Trigger the 'Paste' Keyevent (279)
+        # This sends the clipboard content to whatever is currently focused
+        driver.execute_script(
+            "mobile: shell",
+            {
+                "command": "input",
+                "args": ["keyevent", "279"]
+            }
+        )
+        
+        # 4. Optional: Hit Enter to confirm (Keyevent 66)
+        time.sleep(0.5)
+        driver.execute_script("mobile: shell", {"command": "input", "args": ["keyevent", "66"]})
+        
+        print(f"Successfully pasted: {text}")
+
+    except Exception as e:
+        print(f"Clipboard paste failed: {e}")
 
 
+def swipe_profile(driver, screen_width: int):
+    # 1. Randomize the X-coordinate across most of the screen width
+    # This ensures the 'tap' and 'drag' happen in different vertical lanes
+    random_x = int(screen_width * random.uniform(0.15, 0.85))
+    
+    # 2. Define the vertical bounds
+    start_y = 1500
+    end_y = 1000
+    swipe_height = start_y - end_y  # 300 pixel travel distance
 
-def swipe_profile(
-    driver,
-    screen_width: int,
-    retries: int = 2,
-    delay_seconds: float = 0.2,
-) -> None:
-    # Then perform the swipe
-    start_x = int(screen_width * random.uniform(0.45, 0.55))
-    start_y = 2021
-    end_y = 550
-
-    # Generate small intermediate points for a gentle curve
-    points = []
-    segments = 5
-    for j in range(segments + 1):
-        y = start_y - ((start_y - end_y) * j // segments)
-        x = start_x + int(30 * (j / segments) * random.choice([-1, 1]))
-        points.append((x, y))
-
-    # Execute swipe in small steps
-    for k in range(len(points) - 1):
-        for attempt in range(1, retries + 1):
-            try:
-                driver.execute_script(
-                    "mobile: swipeGesture",
-                    {
-                        "direction": "up",
-                        "percent": 0.9,
-                        "left": min(points[k][0], points[k+1][0]),
-                        "top": min(points[k][1], points[k+1][1]),
-                        "width": abs(points[k+1][0] - points[k][0]) + 1,
-                        "height": abs(points[k+1][1] - points[k][1]) + 1,
-                        "speed": random.randint(800, 1200)
-                    }
-                )
-                break
-            except WebDriverException:
-                if attempt == retries:
-                    raise
-                time.sleep(delay_seconds)
-        time.sleep(random.uniform(0.01, 0.03))
+    try:
+        driver.execute_script(
+            "mobile: swipeGesture",
+            {
+                "left": random_x,
+                "top": end_y,            # The 'top' is the end of the upward swipe
+                "width": 10,             # Keep width tiny to focus on the X-point
+                "height": swipe_height,
+                "direction": "up",
+                "percent": 1.0,          # Drag the full 300px distance
+                "speed": 5000           # Ultra-fast pixels per second
+            }
+        )
+        time.sleep(1)
+    except Exception as e:
+        print(f"Swipe failed: {e}")
 
 
 def safe_screenshot(driver, path: str, retries: int = 3, delay_seconds: float = 0.2) -> None:
